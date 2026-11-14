@@ -1,7 +1,7 @@
 {
     "name": "@deriv/core",
     "version": "0.1.0",
-    "description": "Deriv Core",
+    "description": "TraderClass Trader",
     "main": "index.js",
     "private": true,
     "scripts": {
@@ -12,20 +12,20 @@
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/deriv-com/derivatives-trader.git"
+        "url": "https://github.com/Ngugithegreat/traderclass-dtrader.git"
     },
     "keywords": [
         "deriv"
     ],
-    "author": "Deriv",
+    "author": "TraderClass",
     "license": "Apache-2.0",
     "bugs": {
-        "url": "https://github.com/deriv-com/derivatives-trader/issues"
+        "url": "https://github.com/Ngugithegreat/traderclass-dtrader/issues"
     },
     "engines": {
         "node": "^22.23.4 || ^24.22.1"
     },
-    "homepage": "https://github.com/deriv-com/derivatives-trader",
+    "homepage": "https://github.com/Ngugithegreat/traderclass-dtrader",
     "devDependencies": {
         "@babel/eslint-parser": "^7.25.1",
         "@babel/plugin-transform-private-property-in-object": "^7.12.1",

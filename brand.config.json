@@ -1,61 +1,63 @@
 {
-    "brand_name": "Trading Platform",
+    "brand_name": "TraderClass",
     "brand_logo": "brand/platform-logo.svg",
     "brand_logo_dark": "brand/platform-logo.svg",
-    "brand_domain": "deriv.com",
+    "brand_domain": "traderclass.site",
     "brand_hostname": {
-        "staging": "staging.dtrader-template.pages.dev",
-        "production": "dtrader-template.pages.dev"
+        "staging": "localhost:8443",
+        "production": "trade.traderclass.site"
     },
     "platform": {
-        "name": "Trading Platform",
-        "description": "A whole new trading experience on a powerful yet easy to use platform.",
+        "name": "TraderClass Trader",
+        "description": "Trade Deriv options on TraderClass - fast, simple and secure.",
         "logo": "brand/platform-logo.svg",
-        "home_url": "https://home.deriv.com/dashboard",
-        "help_centre_url": "https://trade.deriv.com/help-centre"
+        "home_url": "https://www.traderclass.site",
+        "help_centre_url": "https://www.traderclass.site"
     },
     "signup_url": {
         "production": "https://home.deriv.com/dashboard/signup",
-        "staging": "https://staging-home.deriv.com/dashboard/signup"
+        "staging": "https://home.deriv.com/dashboard/signup"
     },
     "deposit_url": {
-        "staging": "https://staging.dtrader-template.pages.dev/transfer",
-        "production": "https://dtrader-template.pages.dev/transfer"
+        "staging": "https://www.traderclass.site",
+        "production": "https://www.traderclass.site"
     },
     "auth": {
-        "staging": "https://staging-auth.deriv.com",
+        "staging": "https://auth.deriv.com",
         "production": "https://auth.deriv.com",
-        "oauth_scopes": ["trade", "account_manage"],
-        "oauth_redirect_uri_staging": "https://staging.dtrader-template.pages.dev",
-        "oauth_redirect_uri_production": "https://dtrader-template.pages.dev",
+        "oauth_scopes": [
+            "trade"
+        ],
+        "oauth_redirect_uri_staging": "https://localhost:8443",
+        "oauth_redirect_uri_production": "https://trade.traderclass.site",
         "oauth_app_id": ""
     },
     "derivws": {
-        "staging": "https://staging-api.derivws.com",
+        "staging": "https://api.derivws.com",
         "production": "https://api.derivws.com"
     },
     "api_core": {
-        "staging": "staging-api-core.deriv.com",
+        "staging": "api-core.deriv.com",
         "production": "api-core.deriv.com"
     },
     "api": {
-        "staging": "staging-api.deriv.com",
+        "staging": "api.deriv.com",
         "production": "api.deriv.com"
     },
     "app_id": {
-        "staging": 16929,
-        "production": 16929
+        "staging": "34XD72MBNztfU4RFx7YGe",
+        "production": "34XD72MBNztfU4RFx7YGe"
     },
     "colors": {
-        "primary": "#118e1c",
-        "secondary": "#85acb0",
+        "primary": "#ff444f",
+        "secondary": "#0b1f33",
         "tertiary": "#ff6b35",
         "success": "#4bb4b3",
         "danger": "#ec3f3f",
         "warning": "#ffad3a",
         "info": "#2196f3",
         "neutral": "#999999",
-        "black": "#181c25",
+        "black": "#06121f",
         "white": "#ffffff"
     },
     "color_variants": {
@@ -66,5 +68,11 @@
     "features": {
         "dark_mode": true,
         "language_switcher": false
+    },
+    "embed": {
+        "allowed_parent_origins": [
+            "https://www.traderclass.site",
+            "https://traderclass.site"
+        ]
     }
 }
