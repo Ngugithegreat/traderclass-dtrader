@@ -52,13 +52,17 @@ if (config.brand_logo_dark && !config.brand_logo_dark.endsWith('.svg')) {
     errors.push(`brand_logo_dark must be an SVG file path ending in .svg (got: "${config.brand_logo_dark}")`);
 }
 
-// app_id must be numeric
+// app_id: legacy numeric ID, or the alphanumeric app ID issued by the new
+// developers.deriv.com dashboard (sent as the Deriv-App-ID header)
+const isValidAppId = v => typeof v === 'number' || (typeof v === 'string' && /^[A-Za-z0-9]+$/.test(v));
 if (config.app_id) {
-    if (typeof config.app_id.staging !== 'number') {
-        errors.push(`app_id.staging must be a number (got: ${typeof config.app_id.staging})`);
+    if (!isValidAppId(config.app_id.staging)) {
+        errors.push(`app_id.staging must be a number or alphanumeric string (got: ${typeof config.app_id.staging})`);
     }
-    if (typeof config.app_id.production !== 'number') {
-        errors.push(`app_id.production must be a number (got: ${typeof config.app_id.production})`);
+    if (!isValidAppId(config.app_id.production)) {
+        errors.push(
+            `app_id.production must be a number or alphanumeric string (got: ${typeof config.app_id.production})`
+        );
     }
     if (config.app_id.staging === 16929 && config.app_id.production === 16929) {
         warnings.push(
@@ -67,6 +71,31 @@ if (config.app_id) {
     }
 } else {
     warnings.push('app_id is not configured. WebSocket will use the default. See WHITE_LABEL.md for setup.');
+}
+
+// Embed allow-list (white-label addition): every allowed parent must be an exact https origin
+// and must also be listed in vercel.json's CSP frame-ancestors, or the browser blocks the frame.
+if (config.embed && config.embed.allowed_parent_origins) {
+    const origins = config.embed.allowed_parent_origins;
+    if (!Array.isArray(origins)) {
+        errors.push('embed.allowed_parent_origins must be an array of origins');
+    } else {
+        origins.forEach(o => {
+            if (typeof o !== 'string' || !/^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(o)) {
+                errors.push(`embed.allowed_parent_origins: "${o}" must be an exact https origin (no path, no "*")`);
+            }
+        });
+        const vercelPath = path.join(__dirname, '..', 'vercel.json');
+        if (fs.existsSync(vercelPath)) {
+            const vercel = fs.readFileSync(vercelPath, 'utf8');
+            const csp = (vercel.match(/frame-ancestors[^"]*/) || [''])[0];
+            origins.forEach(o => {
+                if (!csp.split(/\s+/).includes(o)) {
+                    errors.push(`vercel.json CSP frame-ancestors is missing allowed parent origin ${o}`);
+                }
+            });
+        }
+    }
 }
 
 // Logo SVG files must exist in assets/brand/

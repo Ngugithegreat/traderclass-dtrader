@@ -70,9 +70,12 @@ export const getPlatformDescription = (): string => {
     return ((config_data.platform as Record<string, unknown>).description as string) ?? '';
 };
 
-export const getAppId = (): number => {
-    const app_id = (config_data as Record<string, unknown> & typeof config_data).app_id as
-        | { staging: number; production: number }
+// app_id is sent as the `Deriv-App-ID` REST header. Apps registered on the new
+// developers.deriv.com dashboard have an alphanumeric ID (same value as the OAuth
+// client_id), so both numbers and strings are accepted.
+export const getAppId = (): number | string => {
+    const app_id = (config_data as Record<string, unknown>).app_id as
+        | { staging: number | string; production: number | string }
         | undefined;
     if (!app_id) return 16929;
     return isProduction() ? app_id.production : app_id.staging;
@@ -103,6 +106,10 @@ export const getDomainName = () => {
 const substituteDerivDomain = (url: string): string => {
     const domain = getDomainName();
     if (!domain || domain !== getBrandDomain()) return url;
+    // White-label fix: only rewrite for Deriv's own mirror TLDs (deriv.be, deriv.me, ...).
+    // On a white-label domain (e.g. traderclass.site) the Deriv API/auth hosts must stay
+    // on deriv.com — "api-core.traderclass.site" does not exist.
+    if (!/^deriv\.[a-z.]+$/.test(domain)) return url;
     try {
         // Parse the URL so we only rewrite the hostname — not query params or path segments
         const parsed = new URL(url);
