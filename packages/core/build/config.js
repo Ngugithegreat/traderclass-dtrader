@@ -230,7 +230,10 @@ const generateSWConfig = () => ({
 });
 
 const htmlOutputConfig = is_release => ({
-    template: 'index.html',
+    // Force html-webpack-plugin's own (lodash) template loader. The generic `.html` rule
+    // (html-loader) otherwise takes precedence and the <%= templateParameters %> tags in
+    // index.html are emitted verbatim instead of being replaced.
+    template: `!!${require.resolve('html-webpack-plugin/lib/loader.js')}!${path.resolve(__dirname, '../src/index.html')}`,
     filename: 'index.html',
     // [AI]
     templateParameters: {
@@ -242,6 +245,7 @@ const htmlOutputConfig = is_release => ({
         api_core_url: `https://${brandConfig.api_core.production}`,
         api_url: `https://${brandConfig.api.production}`,
         auth_url: brandConfig.auth.production,
+        embed_allowed_parent_origins: JSON.stringify(brandConfig.embed?.allowed_parent_origins || []),
     },
     // [/AI]
     meta: is_release
