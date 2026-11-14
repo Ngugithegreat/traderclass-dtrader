@@ -240,6 +240,27 @@ The webpack build injects it at build time via `DefinePlugin`. The app will thro
 
 ---
 
+## Embedding in a Parent Site (fork addition)
+
+This fork adds an opt-in embed auth bridge (`packages/core/src/Services/embed-bridge.ts`) so a
+parent site you control can iframe the trader and pass its signed-in user's Deriv token.
+
+1. List the parent origins in `brand.config.json`:
+   `"embed": { "allowed_parent_origins": ["https://www.yoursite.com", "https://yoursite.com"] }`
+   (exact `https://` origins, no paths, no wildcards).
+2. Put the same origins in `vercel.json` → `Content-Security-Policy: frame-ancestors 'self' ...`.
+   `npm run verify:whitelabel` fails if the two lists differ.
+3. Protocol (all messages use an exact targetOrigin, never `*`):
+    - child → parent `{ type: 'DTRADER_READY', logged_in }` on boot (sent only to allowed origins)
+    - parent → child `{ type: 'DTRADER_AUTH', token, expires_at?, loginid? }` — stored exactly
+      like a normal OAuth login (`sessionStorage.auth_info`, `active_loginid`), then reload
+    - parent → child `{ type: 'DTRADER_LOGOUT' }` — clears the session, then reload
+4. The child ignores any message whose `event.origin` is not in the list or whose
+   `event.source` is not its direct parent. With an empty list the bridge is disabled.
+
+`app_id` may be the alphanumeric App ID from the new developers.deriv.com dashboard (it is
+only sent as the `Deriv-App-ID` REST header). Set `OAUTH_CLIENT_ID` to the same value.
+
 ## Setting Up Translations (Optional)
 
 By default the app ships with English only, loaded from bundled locale files. To support multiple languages with dynamic loading from a CDN, you need to host translation files and point the build at them.

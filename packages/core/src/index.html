@@ -79,12 +79,33 @@
             }
         </style>
         <script type="text/javascript">
-            if (self === top) {
-                var antiClickjack = document.getElementById('antiClickjack');
-                antiClickjack.parentNode.removeChild(antiClickjack);
-            } else {
-                top.location = self.location;
-            }
+            (function () {
+                // White-label embed: only the parent origins in brand.config.json
+                // (embed.allowed_parent_origins) may frame this app. CSP frame-ancestors
+                // (vercel.json) is the primary control; this is defence in depth.
+                var allowedParents = <%= htmlWebpackPlugin.options.templateParameters.embed_allowed_parent_origins %>;
+                var isAllowedParent = function () {
+                    var parentOrigin = '';
+                    if (window.location.ancestorOrigins && window.location.ancestorOrigins.length) {
+                        parentOrigin = window.location.ancestorOrigins[0];
+                    } else if (document.referrer) {
+                        try {
+                            parentOrigin = new URL(document.referrer).origin;
+                        } catch (e) {
+                            parentOrigin = '';
+                        }
+                        // the app reloading itself inside the frame keeps its own origin as referrer
+                        if (parentOrigin === window.location.origin) return true;
+                    }
+                    return allowedParents.indexOf(parentOrigin) !== -1;
+                };
+                if (self === top || isAllowedParent()) {
+                    var antiClickjack = document.getElementById('antiClickjack');
+                    antiClickjack.parentNode.removeChild(antiClickjack);
+                } else {
+                    top.location = self.location;
+                }
+            })();
         </script>
         <!-- End Anti-Clickjack -->
 

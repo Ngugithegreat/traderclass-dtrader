@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 
 import App from 'App/app.jsx';
 import initStore from 'App/initStore';
+import { initEmbedBridge } from 'Services/embed-bridge';
 // eslint-disable-next-line
 import registerServiceWorker from 'Utils/PWA';
 
@@ -29,5 +30,8 @@ const initApp = async () => {
         root.render(<App root_store={root_store} />);
     }
 };
+
+// White-label: accept a session from an allow-listed parent site when embedded.
+initEmbedBridge();
 
 initApp();
