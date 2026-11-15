@@ -39,6 +39,10 @@ const useActiveSymbols = () => {
         },
         options: {
             cacheTime: ACTIVE_SYMBOLS_CACHE_CONFIG.CACHE_TIME,
+            // The socket can be mid-reconnect right after a login/account handover; retry before
+            // showing the "refresh the page" error.
+            retry: 3,
+            retryDelay: (attempt: number) => Math.min(1000 * 2 ** attempt, 6000),
         },
     });
 
