@@ -172,11 +172,13 @@ const TradeDesktop = observer(() => {
                         </div>
                     </div>
                     {/* Mobile onboarding */}
-                    {!guide_dtrader_v2?.trade_page && is_logged_in && <OnboardingGuide type='trade_page' />}
+                    {!is_embedded && !guide_dtrader_v2?.trade_page && is_logged_in && (
+                        <OnboardingGuide type='trade_page' />
+                    )}
                     {/* Desktop onboarding - new users */}
-                    {is_logged_in && <OnboardingGuideDesktop type='trade_page' />}
+                    {!is_embedded && is_logged_in && <OnboardingGuideDesktop type='trade_page' />}
                     {/* [AI] Desktop onboarding - returning mobile users */}
-                    {is_logged_in && <OnboardingGuideDesktopReturning type='trade_page' />}
+                    {!is_embedded && is_logged_in && <OnboardingGuideDesktopReturning type='trade_page' />}
                     {/* [/AI] */}
                 </div>
             ) : (
