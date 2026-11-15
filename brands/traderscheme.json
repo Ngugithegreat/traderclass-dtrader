@@ -1,0 +1,15 @@
+{
+    "brand_name": "TraderScheme",
+    "brand_domain": "traderschemess.com",
+    "brand_hostname": { "production": "trade.traderschemess.com" },
+    "platform": {
+        "name": "TraderScheme Trader",
+        "description": "Trade Deriv options on TraderScheme - fast, simple and secure.",
+        "home_url": "https://www.traderschemess.com",
+        "help_centre_url": "https://www.traderschemess.com"
+    },
+    "deposit_url": { "staging": "https://www.traderschemess.com", "production": "https://www.traderschemess.com" },
+    "auth": { "oauth_redirect_uri_production": "https://trade.traderschemess.com" },
+    "app_id": { "staging": "34VZd87s9vqRQxWdx1qYl", "production": "34VZd87s9vqRQxWdx1qYl" },
+    "embed": { "allowed_parent_origins": ["https://www.traderschemess.com", "https://traderschemess.com"] }
+}
