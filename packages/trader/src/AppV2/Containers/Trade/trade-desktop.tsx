@@ -30,10 +30,12 @@ import { useTraderStore } from 'Stores/useTraderStores';
 
 import { TradeChart } from '../Chart';
 
+import EmbedTradeTypePicker, { isEmbeddedLayout } from './embed-trade-type-picker';
 import TradeTypes from './trade-types';
 
 const TradeDesktop = observer(() => {
     const chart_ref = React.useRef<HTMLDivElement>(null);
+    const [is_embedded] = React.useState(isEmbeddedLayout);
     const {
         client,
         common: { current_language, network_status },
@@ -125,15 +127,17 @@ const TradeDesktop = observer(() => {
                         'trade--flyout-open': active_sidebar_flyout !== null,
                     })}
                 >
-                    <div className='trade__header'>
-                        <TradeTypes
-                            contract_type={contract_type}
-                            onTradeTypeSelect={onTradeTypeSelect}
-                            trade_types={trade_types}
-                            is_dark_mode_on={is_dark_mode_on}
-                        />
-                        <AccountHeader />
-                    </div>
+                    {!is_embedded && (
+                        <div className='trade__header'>
+                            <TradeTypes
+                                contract_type={contract_type}
+                                onTradeTypeSelect={onTradeTypeSelect}
+                                trade_types={trade_types}
+                                is_dark_mode_on={is_dark_mode_on}
+                            />
+                            <AccountHeader />
+                        </div>
+                    )}
                     {/* Commented out to use chart's native market selector instead */}
                     {/* <MarketSelector /> */}
                     <div className='trade__grid'>
@@ -152,7 +156,15 @@ const TradeDesktop = observer(() => {
                             {is_accumulator && <AccumulatorStats />}
                         </div>
                         <div className='trade-params'>
-                            <Guide show_guide_for_selected_contract />
+                            {is_embedded ? (
+                                <EmbedTradeTypePicker
+                                    contract_type={contract_type}
+                                    trade_types={trade_types}
+                                    onSelect={value => onChange({ target: { name: 'contract_type', value } })}
+                                />
+                            ) : (
+                                <Guide show_guide_for_selected_contract />
+                            )}
                             <TradeParameters />
                             <ClosedMarketMessage />
                             {!is_market_closed && <PurchaseButton />}
