@@ -67,10 +67,30 @@ const clearSession = () => {
     localStorage.removeItem('account_id');
 };
 
+/**
+ * Inside a parent site the parent owns navigation and login, so drop our own app chrome:
+ * the left sidebar and the header's account area (Log in / Sign up / balance). The trade-type
+ * chips stay so users can still switch contracts. Framing is limited to allow-listed parents
+ * by CSP frame-ancestors, so this only ever applies there.
+ */
+const applyEmbeddedChrome = () => {
+    document.documentElement.classList.add('dt-embedded');
+    const style = document.createElement('style');
+    style.setAttribute('data-embed', 'chrome');
+    style.textContent = [
+        '.dt-embedded aside.sidebar,',
+        '.dt-embedded .account-header { display: none !important; }',
+        '.dt-embedded .trade__header { padding-inline-start: 1.6rem; }',
+    ].join('\n');
+    document.head.appendChild(style);
+};
+
 export const initEmbedBridge = (): void => {
     if (typeof window === 'undefined' || !isEmbedded()) return;
     const allowed = getAllowedParentOrigins();
     if (!allowed.length) return;
+
+    applyEmbeddedChrome();
 
     window.addEventListener('message', (event: MessageEvent) => {
         if (!allowed.includes(event.origin)) return;
