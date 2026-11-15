@@ -1,0 +1,30 @@
+{
+    "brand_name": "DollarPrinter",
+    "brand_domain": "dollarprinterr.com",
+    "brand_hostname": {
+        "production": "trade.dollarprinterr.com"
+    },
+    "platform": {
+        "name": "DollarPrinter Trader",
+        "description": "Trade Deriv options on DollarPrinter - fast, simple and secure.",
+        "home_url": "https://www.dollarprinterr.com",
+        "help_centre_url": "https://www.dollarprinterr.com"
+    },
+    "deposit_url": {
+        "staging": "https://www.dollarprinterr.com",
+        "production": "https://www.dollarprinterr.com"
+    },
+    "auth": {
+        "oauth_redirect_uri_production": "https://trade.dollarprinterr.com"
+    },
+    "app_id": {
+        "staging": "34X1azgthI1NUlJA3W4sc",
+        "production": "34X1azgthI1NUlJA3W4sc"
+    },
+    "embed": {
+        "allowed_parent_origins": [
+            "https://www.dollarprinterr.com",
+            "https://dollarprinterr.com"
+        ]
+    }
+}

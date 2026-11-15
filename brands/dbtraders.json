@@ -1,0 +1,30 @@
+{
+    "brand_name": "DBTraders",
+    "brand_domain": "db-traders.com",
+    "brand_hostname": {
+        "production": "trade.db-traders.com"
+    },
+    "platform": {
+        "name": "DBTraders Trader",
+        "description": "Trade Deriv options on DBTraders - fast, simple and secure.",
+        "home_url": "https://www.db-traders.com",
+        "help_centre_url": "https://www.db-traders.com"
+    },
+    "deposit_url": {
+        "staging": "https://www.db-traders.com",
+        "production": "https://www.db-traders.com"
+    },
+    "auth": {
+        "oauth_redirect_uri_production": "https://trade.db-traders.com"
+    },
+    "app_id": {
+        "staging": "34WyeDSCDqe0TEGSVqyEX",
+        "production": "34WyeDSCDqe0TEGSVqyEX"
+    },
+    "embed": {
+        "allowed_parent_origins": [
+            "https://www.db-traders.com",
+            "https://db-traders.com"
+        ]
+    }
+}
