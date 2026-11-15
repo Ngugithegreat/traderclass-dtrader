@@ -83,6 +83,16 @@ const applyEmbeddedChrome = () => {
         '.dt-embedded .trade__header { padding-inline-start: 1.6rem; }',
     ].join('\n');
     document.head.appendChild(style);
+
+    // The parent site has its own onboarding, so mark the DTrader tours as already seen.
+    try {
+        const seen = { trade_types_selection: true, trade_page: true, positions_page: true };
+        const current = JSON.parse(localStorage.getItem('guide_dtrader_v2') || '{}');
+        localStorage.setItem('guide_dtrader_v2', JSON.stringify({ ...current, ...seen }));
+        localStorage.setItem('trade_param_guide', 'true');
+    } catch {
+        /* storage blocked: the tour just shows once */
+    }
 };
 
 export const initEmbedBridge = (): void => {
