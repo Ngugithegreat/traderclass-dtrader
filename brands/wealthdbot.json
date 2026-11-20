@@ -1,0 +1,42 @@
+{
+    "brand_name": "Wealthdbot",
+    "brand_domain": "wealthdbot.com",
+    "brand_hostname": {
+        "production": "trade.wealthdbot.com"
+    },
+    "platform": {
+        "name": "Wealthdbot Trader",
+        "description": "Trade Deriv options on Wealthdbot - fast, simple and secure.",
+        "home_url": "https://www.wealthdbot.com",
+        "help_centre_url": "https://www.wealthdbot.com"
+    },
+    "deposit_url": {
+        "staging": "https://www.wealthdbot.com",
+        "production": "https://www.wealthdbot.com"
+    },
+    "auth": {
+        "oauth_redirect_uri_production": "https://trade.wealthdbot.com"
+    },
+    "app_id": {
+        "staging": "34XD72MBNztfU4RFx7YGe",
+        "production": "34XD72MBNztfU4RFx7YGe"
+    },
+    "colors": {
+        "primary": "#c9a227",
+        "secondary": "#0b1f33",
+        "tertiary": "#e0b43a",
+        "success": "#22c55e",
+        "danger": "#ec3f3f",
+        "warning": "#ffad3a",
+        "info": "#2196f3",
+        "neutral": "#999999",
+        "black": "#06121f",
+        "white": "#ffffff"
+    },
+    "embed": {
+        "allowed_parent_origins": [
+            "https://www.wealthdbot.com",
+            "https://wealthdbot.com"
+        ]
+    }
+}
