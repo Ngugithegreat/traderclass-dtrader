@@ -19,13 +19,33 @@
  *   portfolio/profit_table/statement → empty (Layer 3)
  */
 import { getWbMode, wbBalanceMajor, wbWallet, type WbWallet } from './backend';
-import { fmtSpot, wbBuy, wbClose, wbQuote, wbWaitForSettlement, type WbBuyParams, type WbSettlement } from './trade';
+import {
+    derivContractType,
+    describe as describeBody,
+    fmtSpot,
+    majorFromCents,
+    wbBuy,
+    wbClose,
+    wbQuote,
+    wbWaitForSettlement,
+    type WbBuyParams,
+    type WbBuyResult,
+    type WbSettlement,
+} from './trade';
 
 type AnyObj = Record<string, any>;
 type Cb = (v: AnyObj) => void;
 type GetSocket = () => WebSocket | null | undefined;
 
 const nowSec = () => Math.floor(Date.now() / 1000);
+
+/** Epoch seconds from a numeric epoch (string/number) or an ISO date string. */
+const epochOf = (epoch: unknown, iso: unknown): number => {
+    const e = Number(epoch);
+    if (Number.isFinite(e) && e > 0) return Math.floor(e);
+    const d = Date.parse(String(iso || ''));
+    return Number.isFinite(d) ? Math.floor(d / 1000) : nowSec();
+};
 
 const activeLoginId = (wallet: WbWallet): string => {
     try {
@@ -126,6 +146,18 @@ function buildPoc(
     const s = opts.settlement;
     const exitSpot = s?.exit_spot != null ? Number(s.exit_spot) : undefined;
     const exitEpoch = s?.exit_epoch != null ? Number(s.exit_epoch) : undefined;
+    const durSec =
+        params.duration_unit === 'm'
+            ? Number(params.duration || 0) * 60
+            : params.duration_unit === 's'
+              ? Number(params.duration || 0)
+              : Number(params.duration || 1) * 2;
+    const expiryEpoch =
+        opts.sold && exitEpoch
+            ? exitEpoch
+            : res.expiry_epoch != null
+              ? Number(res.expiry_epoch)
+              : entryEpoch + (durSec || 60);
     const poc: AnyObj = {
         contract_id: res.contract_id,
         transaction_ids: { buy: res.transaction_id, sell: opts.sold ? res.transaction_id : undefined },
@@ -151,7 +183,14 @@ function buildPoc(
         entry_spot_time: entryEpoch,
         current_spot: opts.sold ? (exitSpot ?? entrySpot) : entrySpot,
         current_spot_display_value: fmtSpot(opts.sold ? (exitSpot ?? entrySpot) : entrySpot, sym),
+        current_spot_time: opts.sold ? (exitEpoch ?? entryEpoch) : nowSec(),
         date_start: entryEpoch,
+        date_expiry: expiryEpoch,
+        expiry_time: expiryEpoch,
+        is_settleable: opts.sold ? 1 : 0,
+        is_path_dependent: 0,
+        is_forward_starting: 0,
+        tick_count: params.duration_unit === 't' ? Number(params.duration || 1) : undefined,
         longcode: res.longcode,
     };
     if (opts.sold) {
@@ -167,6 +206,28 @@ function buildPoc(
     return poc;
 }
 
+/** A stored backend trade → the WbBuyResult/WbBuyParams shapes buildPoc expects. */
+const tradeToResult = (t: AnyObj): WbBuyResult => ({
+    success: true,
+    contract_id: Number(t.id),
+    transaction_id: Number(t.id),
+    buy_price: majorFromCents(t.stake),
+    payout: majorFromCents(t.payout),
+    longcode: describeBody(t),
+    entry_spot: t.entry_price != null ? Number(t.entry_price) : undefined,
+    entry_epoch: t.entry_epoch != null ? Number(t.entry_epoch) : undefined,
+    expiry_epoch: t.expiry_epoch != null ? Number(t.expiry_epoch) : undefined,
+    symbol: t.symbol,
+});
+const tradeToParams = (t: AnyObj): WbBuyParams => ({
+    symbol: t.symbol,
+    contract_type: derivContractType(t),
+    amount: majorFromCents(t.stake),
+    duration: Number(t.duration || t.ticks || 0),
+    duration_unit: t.kind === 'digit' ? 't' : 's',
+    barrier: t.barrier,
+    multiplier: t.multiplier,
+});
 export function installWbInterceptor(deriv_api: AnyObj, getSocket: GetSocket): void {
     if (!deriv_api || (deriv_api as AnyObj).__wb_wrapped) return;
     (deriv_api as AnyObj).__wb_wrapped = true;
@@ -211,6 +272,20 @@ export function installWbInterceptor(deriv_api: AnyObj, getSocket: GetSocket): v
             } catch {
                 /* ignore */
             }
+        });
+    };
+
+    // Poll an open contract to settlement (once per contract), then emit the
+    // sold POC + refresh the balance pill.
+    const polling = new Set<number>();
+    const startWatch = (res: WbBuyResult, params: WbBuyParams) => {
+        const id = res.contract_id;
+        if (id == null || polling.has(id)) return;
+        polling.add(id);
+        wbWaitForSettlement(id).then(settlement => {
+            emitPoc(buildPoc(res, params, { sold: true, profit: settlement?.profit ?? 0, settlement }));
+            pushBalance(getSocket).catch(() => {});
+            polling.delete(id);
         });
     };
 
@@ -328,10 +403,7 @@ export function installWbInterceptor(deriv_api: AnyObj, getSocket: GetSocket): v
                         emitPoc(buildPoc(res, buyParams, { sold: false }));
                         pushBalance(getSocket).catch(() => {});
                     }, 20);
-                    wbWaitForSettlement(res.contract_id!).then(settlement => {
-                        emitPoc(buildPoc(res, buyParams, { sold: true, profit: settlement?.profit ?? 0, settlement }));
-                        pushBalance(getSocket).catch(() => {});
-                    });
+                    startWatch(res, buyParams);
                     return {
                         echo_req: request,
                         msg_type: 'buy',
@@ -387,19 +459,98 @@ export function installWbInterceptor(deriv_api: AnyObj, getSocket: GetSocket): v
                 });
             }
             case 'portfolio':
-                return Promise.resolve({ echo_req: request, msg_type: 'portfolio', portfolio: { contracts: [] } });
+                return (async () => {
+                    const wallet = await wbWallet();
+                    const demo = getWbMode() !== 'real';
+                    const open = (((wallet?.openTrades as AnyObj[]) || []) as AnyObj[]).filter(
+                        t => !!t.is_demo === demo
+                    );
+                    const contracts = open.map(t => buildPoc(tradeToResult(t), tradeToParams(t), { sold: false }));
+                    // After the POC subscription registers, push a live POC + start
+                    // settlement polling for each existing open contract.
+                    setTimeout(() => {
+                        open.forEach(t => {
+                            const res = tradeToResult(t);
+                            const params = tradeToParams(t);
+                            emitPoc(buildPoc(res, params, { sold: false }));
+                            startWatch(res, params);
+                        });
+                    }, 50);
+                    return { echo_req: request, msg_type: 'portfolio', portfolio: { contracts } };
+                })();
             case 'profit_table':
-                return Promise.resolve({
-                    echo_req: request,
-                    msg_type: 'profit_table',
-                    profit_table: { transactions: [] },
-                });
+                return (async () => {
+                    const wallet = await wbWallet();
+                    const demo = getWbMode() !== 'real';
+                    const closed = (((wallet?.closedTrades as AnyObj[]) || []) as AnyObj[]).filter(
+                        t => !!t.is_demo === demo
+                    );
+                    const transactions = closed.map(t => {
+                        const buy = majorFromCents(t.stake);
+                        const sell = t.status === 'won' ? majorFromCents(t.payout) : 0;
+                        return {
+                            contract_id: Number(t.id),
+                            transaction_id: Number(t.id),
+                            contract_type: derivContractType(t),
+                            buy_price: buy,
+                            sell_price: sell,
+                            payout: majorFromCents(t.payout),
+                            profit: sell - buy,
+                            purchase_time: epochOf(t.entry_epoch, t.created_at),
+                            sell_time: epochOf(t.expiry_epoch, t.settled_at || t.created_at),
+                            app_id: 0,
+                            duration_type: '',
+                            longcode: describeBody(t),
+                            shortcode: buildShortcode(tradeToParams(t), tradeToResult(t)),
+                            underlying_symbol: t.symbol,
+                        };
+                    });
+                    return {
+                        echo_req: request,
+                        msg_type: 'profit_table',
+                        profit_table: { transactions, count: transactions.length },
+                    };
+                })();
             case 'statement':
-                return Promise.resolve({
-                    echo_req: request,
-                    msg_type: 'statement',
-                    statement: { transactions: [], count: 0 },
-                });
+                return (async () => {
+                    const wallet = await wbWallet();
+                    const demo = getWbMode() !== 'real';
+                    const closed = (((wallet?.closedTrades as AnyObj[]) || []) as AnyObj[]).filter(
+                        t => !!t.is_demo === demo
+                    );
+                    const transactions: AnyObj[] = [];
+                    closed.forEach(t => {
+                        const shortcode = buildShortcode(tradeToParams(t), tradeToResult(t));
+                        transactions.push({
+                            transaction_id: Number(t.id) * 10 + 1,
+                            action_type: 'buy',
+                            amount: -majorFromCents(t.stake),
+                            transaction_time: epochOf(t.entry_epoch, t.created_at),
+                            longcode: describeBody(t),
+                            shortcode,
+                            contract_id: Number(t.id),
+                            app_id: 0,
+                        });
+                        if (t.status === 'won') {
+                            transactions.push({
+                                transaction_id: Number(t.id) * 10 + 2,
+                                action_type: 'sell',
+                                amount: majorFromCents(t.payout),
+                                transaction_time: epochOf(t.expiry_epoch, t.settled_at || t.created_at),
+                                longcode: describeBody(t),
+                                shortcode,
+                                contract_id: Number(t.id),
+                                app_id: 0,
+                            });
+                        }
+                    });
+                    transactions.sort((a, b) => b.transaction_time - a.transaction_time);
+                    return {
+                        echo_req: request,
+                        msg_type: 'statement',
+                        statement: { transactions, count: transactions.length },
+                    };
+                })();
             default:
                 return origSend(request);
         }

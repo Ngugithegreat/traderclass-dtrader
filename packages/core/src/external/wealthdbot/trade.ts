@@ -23,6 +23,22 @@ const TYPE_MAP: Record<string, BackendType> = {
     DIGITODD: { kind: 'digit', direction: 'odd', subtype: 'even_odd' },
 };
 
+/** Reverse of TYPE_MAP: a stored backend trade → its Deriv contract_type. */
+export function derivContractType(trade: Record<string, any>): string {
+    const kind = trade.kind;
+    const dir = trade.direction;
+    const sub = trade.subtype;
+    if (kind === 'rise_fall') return dir === 'fall' ? 'PUT' : 'CALL';
+    if (kind === 'mult') return dir === 'down' ? 'MULTDOWN' : 'MULTUP';
+    if (sub === 'over_under') return dir === 'under' ? 'DIGITUNDER' : 'DIGITOVER';
+    if (sub === 'matches_differs') return dir === 'differs' ? 'DIGITDIFF' : 'DIGITMATCH';
+    if (sub === 'even_odd') return dir === 'odd' ? 'DIGITODD' : 'DIGITEVEN';
+    return 'CALL';
+}
+
+/** Backend cents → major units. */
+export const majorFromCents = (cents: unknown): number => Math.round(Number(cents || 0)) / 100;
+
 const DURATIONS = [15, 30, 60, 120, 300]; // seconds
 const MULTIPLIERS = [100, 200, 400, 1000];
 const DIGIT_HOUSE_EDGE = 0.05;
@@ -50,6 +66,7 @@ export interface WbBuyResult {
     balance_after?: number;
     entry_spot?: number;
     entry_epoch?: number;
+    expiry_epoch?: number;
     symbol?: string;
     error?: string;
     status?: number;
