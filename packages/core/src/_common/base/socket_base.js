@@ -2,6 +2,8 @@ const DerivAPIBasic = require('@deriv/deriv-api/dist/DerivAPIBasic');
 const { getAccountType, cloneObject, State, getApiV4BaseUrl } = require('@deriv/shared');
 const SocketCache = require('./socket_cache');
 const APIMiddleware = require('./api_middleware');
+const { isWb } = require('../../external/wealthdbot/backend');
+const { installWbInterceptor } = require('../../external/wealthdbot/intercept');
 
 /*
  * An abstraction layer over native javascript WebSocket,
@@ -125,6 +127,10 @@ const BinarySocketBase = (() => {
                 storage: SocketCache,
                 middleware: new APIMiddleware(config),
             });
+
+            // Wealthdbot own-backend: route account/money messages to our backend,
+            // keep market data on Deriv's public feed. Inert unless WB_OWN_BACKEND_API is set.
+            if (isWb()) installWbInterceptor(deriv_api, () => binary_socket);
         }
 
         deriv_api.onOpen().subscribe(() => {
@@ -135,7 +141,7 @@ const BinarySocketBase = (() => {
 
             // v4: auth is embedded in the OTP WS URL — no separate authorize message.
             // Balance subscription serves as auth confirmation (handled in socket-general.js).
-            const is_authenticated = configured_ws_url && configured_ws_url !== getPublicWSUrl();
+            const is_authenticated = isWb() || (configured_ws_url && configured_ws_url !== getPublicWSUrl());
 
             if (is_authenticated) {
                 // Only reset authorization state on initial connection, not on reconnection

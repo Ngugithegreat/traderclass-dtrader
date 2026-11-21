@@ -14,6 +14,8 @@ import WS from 'Services/ws-methods';
 
 import { FORM_ERROR_MESSAGES } from '../Constants/form-error-messages';
 
+import WbLoginModal from '../external/wealthdbot/LoginModal';
+
 import AppContent from './AppContent';
 
 import 'Sass/app.scss';
@@ -137,6 +139,7 @@ const App = ({ root_store }) => {
                             {/* This is required as translation provider uses suspense to reload language */}
                             <React.Suspense fallback={<Loading />}>
                                 <AppContent passthrough={platform_passthrough} />
+                                <WbLoginModal />
                             </React.Suspense>
                         </TranslationProvider>
                     </APIProvider>

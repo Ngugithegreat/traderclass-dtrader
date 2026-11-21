@@ -32,6 +32,21 @@ const storePKCEVerifier = (verifier: string): void => {
 };
 
 // ---------------------------------------------------------------------------
+// Wealthdbot own-backend: when WB_OWN_BACKEND_API is set, logins open our own
+// email/password modal instead of redirecting to Deriv OAuth. Read the env var
+// directly (shared cannot depend on core). Returns true if handled.
+// ---------------------------------------------------------------------------
+const wbOpenAuth = (mode: 'login' | 'signup' = 'login'): boolean => {
+    if (!process.env.WB_OWN_BACKEND_API) return false;
+    try {
+        window.dispatchEvent(new CustomEvent('wb:open-auth', { detail: { mode } }));
+    } catch {
+        /* noop */
+    }
+    return true;
+};
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -41,6 +56,7 @@ const storePKCEVerifier = (verifier: string): void => {
  * in browser history (prevents back-button returning to a broken state).
  */
 export const redirectToLogin = async (_language?: string): Promise<void> => {
+    if (wbOpenAuth('login')) return;
     const verifier = generateCodeVerifier();
     const challenge = await generateCodeChallenge(verifier);
     storePKCEVerifier(verifier);
@@ -65,6 +81,7 @@ export const redirectToLogin = async (_language?: string): Promise<void> => {
 };
 
 export const redirectToSignUp = (_language?: string): void => {
+    if (wbOpenAuth('signup')) return;
     const signup_url = getSignupUrl();
     if (signup_url) window.open(signup_url, '_blank', 'noopener,noreferrer');
 };

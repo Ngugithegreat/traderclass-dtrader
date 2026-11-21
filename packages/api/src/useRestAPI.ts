@@ -40,6 +40,49 @@ export const useRestAPI = () => {
      * @returns Promise with typed response
      */
     const fetchREST = async <T>(endpoint: string, options?: RequestInit): Promise<T> => {
+        // Wealthdbot own-backend: the derivatives-accounts list comes from our
+        // wallet, not Deriv (api cannot import core, so map inline). The switch +
+        // base URL are provided at runtime by core via globalThis.__WB (env vars
+        // are not reliably inlined into this package). Everything else → Deriv.
+        const wb = (globalThis as unknown as { __WB?: { on: boolean; api: string } }).__WB;
+        if (wb?.on && endpoint.startsWith('/trading/v1/options/accounts') && (options?.method || 'GET') === 'GET') {
+            const base = wb.api || '';
+            let tok: string | null = null;
+            try {
+                tok = localStorage.getItem('tl_token');
+            } catch {
+                /* noop */
+            }
+            const res = await fetch(`${base}/api/wallet`, {
+                headers: tok ? { Authorization: `Bearer ${tok}` } : {},
+                cache: 'no-store',
+            });
+            if (!res.ok)
+                throw Object.assign(new Error('wallet failed'), {
+                    status: res.status,
+                    isAuthError: res.status === 401,
+                });
+            const j = await res.json();
+            const u = j.user || {};
+            const id = Number(u.id || 0);
+            const now = new Date().toISOString();
+            const mk = (account_type: 'demo' | 'real', cents: unknown, pfx: string) => ({
+                account_id: pfx + String(90000000 + id),
+                account_type,
+                balance: Math.round(Number(cents || 0)) / 100,
+                currency: 'USD',
+                group: 'row',
+                status: 'active',
+                created_at: now,
+                email: u.email || '',
+                last_access_at: now,
+                name: u.name || '',
+                server_id: 'wealthdbot',
+                rights: {},
+            });
+            return { data: [mk('demo', u.demo_balance, 'VRW'), mk('real', u.balance, 'ROT')] } as T;
+        }
+
         const url = `${restAPIConfig.baseUrl}${endpoint}`;
 
         // Determine the method (default to GET if not specified)

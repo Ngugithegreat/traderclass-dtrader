@@ -17,6 +17,7 @@ import { getInitialLanguage, localize } from '@deriv-com/translations';
 
 import { requestRestLogout, WS } from 'Services';
 import { fetchAccounts, fetchOTP } from '../Services/accounts-api';
+import { isWb, setWbMode, wbBalanceMajor, wbWallet } from '../external/wealthdbot/backend';
 import { clearTokens, generateOAuthURL, getStoredToken } from '../Services/oauth';
 
 import { getClientAccountType } from './Helpers/client';
@@ -343,13 +344,34 @@ export default class ClientStore extends BaseStore {
                 localStorage.setItem('active_loginid', active_account.account_id);
                 localStorage.setItem('account_type', active_account.account_type);
 
-                const ws_url = await fetchOTP(active_account.account_id);
-                BinarySocket.setWSUrl(ws_url);
-                BinarySocket.closeAndOpenNewConnection();
+                if (isWb()) {
+                    // Wealthdbot own-backend: the socket keeps riding Deriv's PUBLIC
+                    // market feed from boot (same URL logged-in or out) — do NOT
+                    // reconnect (that churns it and drops active_symbols). Authorize
+                    // DIRECTLY from the wallet instead of awaiting a socket balance
+                    // (avoids a boot-inject vs waiter race that hangs is_logging_in).
+                    setWbMode(active_account.account_type === 'real' ? 'real' : 'demo');
+                    const wb_wallet = await wbWallet();
+                    if (!wb_wallet) throw new Error('No wealthdbot wallet');
+                    this.responseAuthorize({
+                        authorize: {
+                            loginid: active_account.account_id,
+                            balance: wbBalanceMajor(wb_wallet),
+                            currency: 'USD',
+                            email: wb_wallet.user.email || '',
+                            user_id: String(wb_wallet.user.id || ''),
+                        },
+                    });
+                    this.setIsAuthorize(true);
+                } else {
+                    const ws_url = await fetchOTP(active_account.account_id);
+                    BinarySocket.setWSUrl(ws_url);
+                    BinarySocket.closeAndOpenNewConnection();
 
-                // Wait for balance response which serves as authorization.
-                // socket-general.js processes the balance response and calls authorizeAccount().
-                await BinarySocket.wait('balance');
+                    // Wait for balance response which serves as authorization.
+                    // socket-general.js processes the balance and calls authorizeAccount().
+                    await BinarySocket.wait('balance');
+                }
             } catch (error) {
                 // eslint-disable-next-line no-console
                 console.error('[Auth] Account init failed:', error);

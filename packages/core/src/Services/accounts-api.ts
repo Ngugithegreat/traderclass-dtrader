@@ -1,6 +1,12 @@
 import { getApiV4BaseUrl, getAppId } from '@deriv/shared';
 
+import { buildWbAccounts, syncModeFromAccountId } from '../external/wealthdbot/account';
+import { centsToMajor, isWb, wbFetch, wbWallet } from '../external/wealthdbot/backend';
+
 import { getStoredToken, refreshAccessToken } from './oauth';
+
+/** Deriv's PUBLIC options market-data WS URL (no auth) — same formula as socket_base. */
+const publicWSUrl = (): string => `${getApiV4BaseUrl().replace(/^https?:\/\//, 'wss://')}/trading/v1/options/ws/public`;
 
 export type TAccount = {
     account_id: string;
@@ -39,6 +45,11 @@ const apiFetch = async (url: string, options: RequestInit = {}, includeContentTy
 
 /** GET /trading/v1/options/accounts */
 export const fetchAccounts = async (): Promise<TAccount[]> => {
+    if (isWb()) {
+        const wallet = await wbWallet();
+        if (!wallet) throw new Error('fetchAccounts: no wealthdbot wallet');
+        return buildWbAccounts(wallet);
+    }
     const res = await apiFetch(`${getApiV4BaseUrl()}/trading/v1/options/accounts`);
     if (!res.ok) throw new Error(`fetchAccounts failed: ${res.status}`);
     return (await res.json()).data;
@@ -64,6 +75,13 @@ export const createAccount = async (params: {
  * Fetch this immediately before opening the socket — do not cache.
  */
 export const fetchOTP = async (account_id: string): Promise<string> => {
+    if (isWb()) {
+        // No Deriv auth — keep the socket on the public market feed; account/money
+        // messages are intercepted and served from the wealthdbot backend. Set the
+        // demo/real mode from the chosen account so balance/trades use the right side.
+        syncModeFromAccountId(account_id);
+        return publicWSUrl();
+    }
     const res = await apiFetch(
         `${getApiV4BaseUrl()}/trading/v1/options/accounts/${account_id}/otp`,
         { method: 'POST' },
@@ -79,6 +97,27 @@ export const fetchOTP = async (account_id: string): Promise<string> => {
 
 /** POST /trading/v1/options/accounts/{id}/reset-demo-balance */
 export const resetDemoBalance = async (account_id: string): Promise<TAccount> => {
+    if (isWb()) {
+        await wbFetch('/api/demo/reset', { method: 'POST' }).catch(() => undefined);
+        const wallet = await wbWallet();
+        const demo = wallet ? buildWbAccounts(wallet).find(a => a.account_type === 'demo') : undefined;
+        return (
+            demo || {
+                account_id,
+                balance: centsToMajor(0),
+                currency: 'USD',
+                group: 'row',
+                status: 'active',
+                account_type: 'demo',
+                created_at: new Date().toISOString(),
+                email: '',
+                last_access_at: new Date().toISOString(),
+                name: '',
+                server_id: 'wealthdbot',
+                rights: {},
+            }
+        );
+    }
     const res = await apiFetch(
         `${getApiV4BaseUrl()}/trading/v1/options/accounts/${account_id}/reset-demo-balance`,
         { method: 'POST' },

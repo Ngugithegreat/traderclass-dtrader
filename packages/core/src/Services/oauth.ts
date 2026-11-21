@@ -1,5 +1,7 @@
 import { getAuthBaseUrl, getOAuthAppId, getOAuthClientId, getOAuthRedirectUri } from '@deriv/shared';
 
+import { getWbToken, isWb } from '../external/wealthdbot/backend';
+
 // ---------------------------------------------------------------------------
 // PKCE helpers
 // ---------------------------------------------------------------------------
@@ -53,6 +55,17 @@ export const clearPKCEVerifier = (): void => {
 // ---------------------------------------------------------------------------
 
 export const generateOAuthURL = async (): Promise<string> => {
+    // Wealthdbot own-backend: open our login modal instead of Deriv OAuth.
+    // Return the current href so callers' window.location.replace(url) is a no-op.
+    if (isWb()) {
+        try {
+            window.dispatchEvent(new CustomEvent('wb:open-auth', { detail: { mode: 'login' } }));
+        } catch {
+            /* noop */
+        }
+        return window.location.href;
+    }
+
     const verifier = generateCodeVerifier();
     const challenge = await generateCodeChallenge(verifier);
     storePKCEVerifier(verifier);
@@ -135,6 +148,8 @@ export const storeTokens = (access_token: string, refresh_token?: string, expire
 };
 
 export const getStoredToken = (): string | null => {
+    // Wealthdbot own-backend: the session is our JWT in localStorage.
+    if (isWb()) return getWbToken();
     try {
         const info = JSON.parse(sessionStorage.getItem(AUTH_INFO_KEY) ?? 'null');
         if (!info) return null;
